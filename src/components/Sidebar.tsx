@@ -1,8 +1,7 @@
 import type { Profile, Notification, UserRole } from '../types/rfi'
 import { ROLE_CONFIG } from '../types/rfi'
 
-type View = 'dash' | 'list' | 'create' | 'myqueue' | 'history' | 'calendar' | 'settings'
-
+type View = 'dash' | 'list' | 'create' | 'myqueue' | 'history' | 'calendar' | 'settings' | 'roles' | 'flows'
 interface Props {
   currentView: View
   onNavigate: (v: View) => void
@@ -116,6 +115,33 @@ export default function Sidebar({ currentView, onNavigate, currentUser, onRoleCh
         ))}
 
         <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: 'var(--text3)', padding: '8px 8px 4px', marginTop: 8 }}>ระบบ</div>
+        <div
+  onClick={() => onNavigate('flows')}
+  style={{
+    display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px',
+    borderRadius: 7, fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
+    transition: 'all 0.15s', userSelect: 'none',
+    color: currentView === 'flows' ? 'var(--accent)' : 'var(--text2)',
+    background: currentView === 'flows' ? 'rgba(240,112,96,0.1)' : 'transparent',
+  }}
+>
+  <span style={{ fontSize: 15, flexShrink: 0, width: 20, textAlign: 'center' }}>🔀</span>
+  <span>Flow Builder</span>
+</div>
+        
+        <div
+  onClick={() => onNavigate('roles' as View)}
+  style={{
+    display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px',
+    borderRadius: 7, fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
+    transition: 'all 0.15s', userSelect: 'none',
+    color: currentView === 'roles' ? 'var(--accent)' : 'var(--text2)',
+    background: currentView === 'roles' ? 'rgba(240,112,96,0.1)' : 'transparent',
+  }}
+>
+  <span style={{ fontSize: 15, flexShrink: 0, width: 20, textAlign: 'center' }}>🔐</span>
+  <span>Role & Permission</span>
+</div>
         <div
           onClick={() => onNavigate('settings')}
           style={{

@@ -15,13 +15,17 @@ import SettingsView from './components/Settings'
 import NotifPanel from './components/NotifPanel'
 import type { Rfi, UserRole } from './types/rfi'
 import './styles/global.css'
+import RoleManager from './components/RoleManager'
+import FlowBuilder from './components/FlowBuilder'
 
-type View = 'dash' | 'list' | 'create' | 'myqueue' | 'history' | 'calendar' | 'settings'
+type View = 'dash' | 'list' | 'create' | 'myqueue' | 'history' | 'calendar' | 'settings' | 'roles' | 'flows'
 
 const VIEW_TITLE: Record<View, string> = {
   dash: 'Dashboard', list: 'รายการ RFI', create: 'สร้าง RFI ใหม่',
   myqueue: 'คิวของฉัน', history: 'ประวัติทั้งหมด',
   calendar: 'ตารางตรวจงาน', settings: 'ตั้งค่าระบบ',
+  roles: 'จัดการ Role & Permission',
+  flows: 'Flow Builder',
 }
 
 export default function App() {
@@ -189,6 +193,22 @@ export default function App() {
           {view === 'settings' && (
             <SettingsView settings={settings} profiles={profiles} onToast={addToast} />
           )}
+          {view === 'roles' && (
+          <RoleManager onToast={addToast} />
+            )}
+{view === 'flows' && (
+  <FlowBuilder
+    roleGroups={profiles.map(p => ({
+      id: p.id, name: p.role, label: p.name,
+      color: p.color || '#5eaeff', description: null,
+      is_system: false, created_at: p.created_at || '',
+    }))}
+    profiles={profiles.map(p => ({
+      id: p.id, name: p.name, role: p.role, color: p.color || '#5eaeff',
+    }))}
+    onToast={addToast}
+  />
+)}
         </div>
       </div>
 
