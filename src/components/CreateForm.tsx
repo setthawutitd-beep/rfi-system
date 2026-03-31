@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { Profile, RfiDiscipline, RfiPriority } from '../types/rfi'
 import { WORK_TYPES } from '../types/rfi'
 import { supabase, addHistory, addNotification, fetchProfiles } from '../lib/supabase'
+import { fetchFlowTemplates } from '../lib/flows'
 
 interface Props {
   currentUser: Profile | null
@@ -27,6 +28,14 @@ const ZONES = ['Zone A', 'Zone B', 'Zone C', 'Zone D', 'Zone E', 'Zone F']
 export default function CreateForm({ currentUser, onSuccess, onToast }: Props) {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
+  const [flowTemplates, setFlowTemplates] = useState<{id: string; name: string}[]>([])
+const [selectedFlowId, setSelectedFlowId] = useState('')
+
+useEffect(() => {
+  if (!currentUser) return
+  fetchFlowTemplates().then(data => setFlowTemplates(data as {id: string; name: string}[]))
+}, [currentUser])
+  
   const [form, setForm] = useState<FormData>({
     type: '', discipline: '', location: '', zone: '',
     description: '', priority: 'medium', team: [], inspectDate: '', inspectTime: '08:00',
@@ -48,7 +57,7 @@ export default function CreateForm({ currentUser, onSuccess, onToast }: Props) {
   }
 
   const canNext = () => {
-    if (step === 1) return !!form.type && !!form.discipline
+    if (step === 1) return !!form.type && !!form.discipline && !!selectedFlowId
     if (step === 2) return !!form.location && !!form.description
     if (step === 3) return !!form.inspectDate
     return true
@@ -77,6 +86,17 @@ export default function CreateForm({ currentUser, onSuccess, onToast }: Props) {
       }).select().single()
 
       if (error) throw error
+      const { data: firstNode } = await supabase
+  .from('flow_nodes')
+  .select('id')
+  .eq('flow_id', selectedFlowId)
+  .eq('node_type', 'start')
+  .single()
+
+await supabase.from('rfis').update({
+  flow_template_id: selectedFlowId,
+  current_node_id: firstNode?.id || null,
+}).eq('id', rfi.id)
 
       // Add submit history
       await addHistory({
@@ -166,6 +186,16 @@ export default function CreateForm({ currentUser, onSuccess, onToast }: Props) {
               ))}
             </div>
 
+<div style={{ marginBottom: 16 }}>
+  <label style={labelStyle}>Flow Template *</label>
+  <select className="input" value={selectedFlowId} onChange={e => setSelectedFlowId(e.target.value)}>
+    <option value="">— เลือก Flow —</option>
+    {flowTemplates.map(f => (
+      <option key={f.id} value={f.id}>{f.name}</option>
+    ))}
+  </select>
+</div>
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
                 <label style={labelStyle}>Priority</label>
@@ -182,6 +212,9 @@ export default function CreateForm({ currentUser, onSuccess, onToast }: Props) {
             </div>
           </div>
         )}
+
+
+
 
         {/* STEP 2: Details */}
         {step === 2 && (

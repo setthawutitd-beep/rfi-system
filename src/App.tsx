@@ -46,9 +46,9 @@ export default function App() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setAuthed(!!session)
     })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
-      setAuthed(!!session)
-    })
+const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+  setAuthed(!!session)
+})
     return () => subscription.unsubscribe()
   }, [])
 
@@ -66,10 +66,7 @@ export default function App() {
     if (rfi) { setSelectedRfi(rfi); setModalOpen(true); setNotifOpen(false) }
   }
 
-  const handleRoleChange = (role: UserRole) => {
-    switchRole(role)
-    addToast('เปลี่ยน Role', `กำลังดูระบบในฐานะ ${role.toUpperCase()}`, 'info')
-  }
+
 
   const handleAction = async (rfiId: string, action: string, remark: string) => {
     const result = await doAction(rfiId, action, remark)
@@ -121,7 +118,6 @@ export default function App() {
         currentView={view}
         onNavigate={v => { setView(v); setNotifOpen(false) }}
         currentUser={currentUser}
-        onRoleChange={handleRoleChange}
         rfiBadges={{ open: openBadge, queue: queueBadge }}
         notifications={notifications}
       />

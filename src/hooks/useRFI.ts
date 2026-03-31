@@ -34,11 +34,11 @@ export function useRFI() {
       ])
 
       if (rfiRes.data) setRfis(rfiRes.data as Rfi[])
-      if (profileRes.data) {
-        setProfiles(profileRes.data as Profile[])
-        const me = profileRes.data.find(p => p.id === session.user.id)
-        if (me) setCurrentUser(me as Profile)
-      }
+if (profileRes.data) {
+  setProfiles(profileRes.data as Profile[])
+  const me = profileRes.data.find(p => p.id === session.user.id)
+  if (me) setCurrentUser(me as Profile)
+}
       if (settingsRes.data) setSettings(settingsRes.data as Settings)
 
       if (session.user.id) {
@@ -53,62 +53,27 @@ export function useRFI() {
   }, [])
 
   // ─── Realtime subscriptions ───────────────────────────────────
-  useEffect(() => {
-    loadAll()
-
-    let rfiChannel: RealtimeChannel | null = null
-    let notifChannel: RealtimeChannel | null = null
-
-    const setupRealtime = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-
-      // Subscribe to RFI changes
-      rfiChannel = supabase
-        .channel('rfi-changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'rfis' },
-          async () => {
-            // Re-fetch all rfis to get joined data
-            const { data } = await fetchRfis()
-            if (data) setRfis(data as Rfi[])
-          })
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'rfi_history' },
-          (payload) => {
-            setRfis(prev => prev.map(r =>
-              r.id === payload.new.rfi_id
-                ? { ...r, history: [...(r.history || []), payload.new as any] }
-                : r
-            ))
-          })
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'rfi_comments' },
-          async (payload) => {
-            // Re-fetch that specific RFI to get joined comment with user
-            const { data } = await fetchRfis()
-            if (data) setRfis(data as Rfi[])
-            // Suppress unused warning
-            void payload
-          })
-        .subscribe()
-
-      // Subscribe to notifications for current user
-      notifChannel = supabase
-        .channel('notifications')
-        .on('postgres_changes', {
-          event: 'INSERT', schema: 'public', table: 'notifications',
-          filter: `user_id=eq.${session.user.id}`,
-        }, (payload) => {
-          setNotifications(prev => [payload.new as Notification, ...prev])
-        })
-        .subscribe()
+useEffect(() => {
+  // โหลดข้อมูลเมื่อ auth state เปลี่ยน
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    if (session) {
+      loadAll()
+    } else {
+      setCurrentUser(null)
+      setRfis([])
+      setProfiles([])
+      setNotifications([])
+      setLoading(false)
     }
+  })
 
-    setupRealtime()
+  // โหลดครั้งแรก
+  loadAll()
 
-    return () => {
-      rfiChannel?.unsubscribe()
-      notifChannel?.unsubscribe()
-    }
-  }, [loadAll])
+  return () => {
+    subscription.unsubscribe()
+  }
+}, [])
 
   // ─── Actions ─────────────────────────────────────────────────
   const doAction = useCallback(async (
