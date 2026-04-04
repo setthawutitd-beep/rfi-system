@@ -88,24 +88,41 @@ export default function LoginPage({ onLogin }: Props) {
           </button>
         </form>
 
+        
         <div style={{ marginTop: 20, padding: '14px', background: 'var(--surface2)', borderRadius: 8, border: '1px solid var(--border)' }}>
-          <div style={{ fontSize: 10, color: 'var(--text3)', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 8 }}>Demo Accounts</div>
+          <div style={{ fontSize: 10, color: 'var(--text3)', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 8 }}>Demo Accounts — กดเพื่อเข้าระบบเลย</div>
           {[
             { email: 'contractor@ttt.co.th', role: 'CONTRACTOR', color: 'var(--orange)' },
             { email: 'qc@ttt.co.th', role: 'QC ENG.', color: 'var(--yellow)' },
             { email: 'consultant@ttt.co.th', role: 'CONSULTANT', color: 'var(--accent2)' },
+            { email: 'survey@ttt.co.th', role: 'SURVEY', color: '#2dd4bf' },
+            { email: 'lab@ttt.co.th', role: 'LAB', color: '#a78bfa' },
             { email: 'pm@ttt.co.th', role: 'PM', color: 'var(--purple)' },
           ].map(u => (
             <div
               key={u.email}
-              onClick={() => { setEmail(u.email); setPassword('password123') }}
+              onClick={async () => {
+                setLoading(true)
+                setError('')
+                const { error: authError } = await signIn(u.email, 'password123')
+                if (authError) setError(authError.message)
+                else onLogin()
+                setLoading(false)
+              }}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '5px 0', cursor: 'pointer', borderBottom: '1px solid var(--border)',
+                padding: '7px 8px', cursor: 'pointer',
+                borderBottom: '1px solid var(--border)',
+                borderRadius: 6, marginBottom: 2,
+                transition: 'background 0.15s',
               }}
+              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface3)'}
+              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
             >
               <span style={{ fontSize: 11, color: 'var(--text2)' }}>{u.email}</span>
-              <span style={{ fontSize: 10, color: u.color, fontFamily: 'IBM Plex Mono, monospace', fontWeight: 700 }}>{u.role}</span>
+              <span style={{ fontSize: 10, color: u.color, fontFamily: 'IBM Plex Mono, monospace', fontWeight: 700 }}>
+                {loading ? '⟳' : u.role} →
+              </span>
             </div>
           ))}
           <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 6 }}>password: password123</div>

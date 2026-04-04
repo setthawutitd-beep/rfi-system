@@ -1,7 +1,7 @@
 import type { Profile, Notification } from '../types/rfi'
 import { ROLE_CONFIG } from '../types/rfi'
 
-type View = 'dash' | 'list' | 'create' | 'myqueue' | 'history' | 'calendar' | 'settings' | 'roles' | 'flows'
+type View = 'dash' | 'list' | 'create' | 'myqueue' | 'history' | 'calendar' | 'settings' | 'roles' | 'flows' | 'worktypes'| 'numberformat'
 
 interface Props {
   currentView: View
@@ -28,6 +28,8 @@ export default function Sidebar({ currentView, onNavigate, currentUser, rfiBadge
     { id: 'flows',    icon: '🔀', label: 'Flow Builder' },
     { id: 'roles',    icon: '🔐', label: 'Role & Permission' },
     { id: 'settings', icon: '⚙️', label: 'ตั้งค่าระบบ' },
+    { id: 'worktypes', icon: '📋', label: 'ประเภทงาน' },
+    { id: 'numberformat', icon: '🔢', label: 'RFI Number Format' },
   ]
 
   const navItemStyle = (id: View): React.CSSProperties => ({

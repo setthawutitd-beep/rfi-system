@@ -166,3 +166,50 @@ export async function getFileUrl(path: string) {
     .from('rfi-attachments')
     .createSignedUrl(path, 3600) // 1 hour
 }
+
+export async function fetchRfiFlow(flowTemplateId: string) {
+  const [{ data: nodes }, { data: edges }, { data: reqs }] = await Promise.all([
+    supabase.from('flow_nodes').select('*').eq('flow_id', flowTemplateId).order('position_y'),
+    supabase.from('flow_edges').select('*').eq('flow_id', flowTemplateId),
+    supabase.from('flow_node_requirements').select('*'),
+  ])
+  return {
+    nodes: nodes || [],
+    edges: edges || [],
+    requirements: reqs || [],
+  }
+}
+export async function fetchWorkCategories() {
+  const { data } = await supabase
+    .from('work_categories')
+    .select('*')
+    .eq('is_active', true)
+    .order('sort_order')
+  return data || []
+}
+
+export async function fetchRfiFlowFull(flowTemplateId: string, currentNodeId: string) {
+  const [{ data: nodes }, { data: edges }, { data: levels }] = await Promise.all([
+    supabase.from('flow_nodes').select('*').eq('flow_id', flowTemplateId).order('position_y'),
+    supabase.from('flow_edges').select('*').eq('flow_id', flowTemplateId),
+    supabase.from('flow_node_levels').select('*').order('sort_order'),
+  ])
+  return {
+    nodes: nodes || [],
+    edges: edges || [],
+    levels: levels || [],
+    currentNode: (nodes || []).find((n: any) => n.id === currentNodeId) || null,
+  }
+}
+
+export async function advanceRfiNode(rfiId: string, nextNodeId: string) {
+  return supabase.from('rfis').update({ current_node_id: nextNodeId }).eq('id', rfiId)
+}
+
+export async function fetchRfiDocRequests(rfiId: string) {
+  return supabase.from('rfi_doc_requests').select('*').eq('rfi_id', rfiId).order('sort_order')
+}
+
+export async function fetchRfiDocSubmissions(rfiId: string) {
+  return supabase.from('rfi_doc_submissions').select('*, submitted_by_profile:profiles(name, color)').eq('rfi_id', rfiId)
+}

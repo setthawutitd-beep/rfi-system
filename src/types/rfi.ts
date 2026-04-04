@@ -41,6 +41,8 @@ export interface Rfi {
   history?: RfiHistory[]
   comments?: RfiComment[]
   attachments?: RfiAttachment[]
+    flow_template_id?: string | null
+  current_node_id?: string | null
 }
 
 export interface RfiHistory {
@@ -119,13 +121,18 @@ export interface DisciplineConfig {
   steps: string[]
 }
 
+
+
 // ─── Constants ───────────────────────────────────────────────
-export const ROLE_CONFIG: Record<UserRole, { label: string; color: string; cls: string }> = {
-  contractor: { label: 'CONTRACTOR', color: '#fb923c', cls: 'role-contractor' },
-  qc:         { label: 'QC ENG.',    color: '#f5c542', cls: 'role-qc' },
-  consultant: { label: 'CONSULTANT', color: '#5eaeff', cls: 'role-consultant' },
-  pm:         { label: 'PM',         color: '#a78bfa', cls: 'role-pm' },
-  admin:      { label: 'ADMIN',      color: '#f07060', cls: 'role-pm' },
+export const ROLE_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
+  contractor:  { label: 'Contractor',   color: '#fb923c', icon: 'ส' },
+  qc:          { label: 'QC Engineer',  color: '#f5c542', icon: 'ว' },
+  consultant:  { label: 'Consultant',   color: '#5eaeff', icon: 'น' },
+  pm:          { label: 'PM',           color: '#a78bfa', icon: 'ธ' },
+  admin:       { label: 'Admin',        color: '#f07060', icon: 'A' },
+  inspector:   { label: 'Inspector',    color: '#3ecf8e', icon: 'I' },
+  survey:      { label: 'Survey',       color: '#2dd4bf', icon: 'ส' },
+  lab:         { label: 'Lab',          color: '#a78bfa', icon: 'ล' },
 }
 
 export const WORKFLOWS: Record<RfiDiscipline, string[]> = {

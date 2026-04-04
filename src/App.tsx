@@ -17,8 +17,10 @@ import type { Rfi, UserRole } from './types/rfi'
 import './styles/global.css'
 import RoleManager from './components/RoleManager'
 import FlowBuilder from './components/FlowBuilder'
+import WorkTypeManager from './components/WorkTypeManager'
+import RFINumberFormatManager from './components/RFINumberFormatManager'
 
-type View = 'dash' | 'list' | 'create' | 'myqueue' | 'history' | 'calendar' | 'settings' | 'roles' | 'flows'
+type View = 'dash' | 'list' | 'create' | 'myqueue' | 'history' | 'calendar' | 'settings' | 'roles' | 'flows' | 'worktypes'| 'numberformat'
 
 const VIEW_TITLE: Record<View, string> = {
   dash: 'Dashboard', list: 'รายการ RFI', create: 'สร้าง RFI ใหม่',
@@ -26,6 +28,9 @@ const VIEW_TITLE: Record<View, string> = {
   calendar: 'ตารางตรวจงาน', settings: 'ตั้งค่าระบบ',
   roles: 'จัดการ Role & Permission',
   flows: 'Flow Builder',
+  worktypes: 'จัดการประเภทงาน',
+  numberformat: 'RFI Number Format',
+
 }
 
 export default function App() {
@@ -68,15 +73,22 @@ const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session)
 
 
 
-  const handleAction = async (rfiId: string, action: string, remark: string) => {
-    const result = await doAction(rfiId, action, remark)
-    // Update selected RFI from latest data
-    if (!result.error) {
-      const updated = rfis.find(r => r.id === rfiId)
-      if (updated) setSelectedRfi({ ...updated })
-    }
-    return result
-  }
+const handleAction = async (rfiId: string, action: string, remark: string) => {
+  const result = await doAction(rfiId, action, remark)
+  // Fetch RFI ใหม่จาก DB แล้วอัปเดต selectedRfi
+  const { data: fresh } = await supabase
+    .from('rfis')
+    .select(`
+      *,
+      requester:requester_id(id, name, email, role, color, avatar),
+      comments:rfi_comments(id, text, created_at, user:user_id(name, color))
+    `)
+    .eq('id', rfiId)
+    .single()
+
+  if (fresh) setSelectedRfi(fresh as Rfi)
+  return result
+}
 
   const handleComment = async (rfiId: string, text: string) => {
     await postComment(rfiId, text)
@@ -204,6 +216,13 @@ const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session)
     }))}
     onToast={addToast}
   />
+)}
+{view === 'worktypes' && (
+  <WorkTypeManager onToast={addToast} />
+)}
+
+{view === 'numberformat' && (
+  <RFINumberFormatManager onToast={addToast} />
 )}
         </div>
       </div>
