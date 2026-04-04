@@ -41,8 +41,10 @@ export interface Rfi {
   history?: RfiHistory[]
   comments?: RfiComment[]
   attachments?: RfiAttachment[]
-    flow_template_id?: string | null
+  flow_template_id?: string | null
   current_node_id?: string | null
+  work_type_id?: string | null
+  work_type_code?: string | null
 }
 
 export interface RfiHistory {
