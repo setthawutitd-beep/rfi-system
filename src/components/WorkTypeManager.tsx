@@ -49,7 +49,7 @@ export default function WorkTypeManager({ onToast }: Props) {
 
   const load = async () => {
     setLoading(true)
-    const [{ data: wt }, { data: itp }, { data: fl }, { data: fmt }, { data: lvl }] = await Promise.all([
+    const [{ data: wt }, { data: itp }, { data: fl }, { data: sp }, { data: fmt }, { data: lvl }] = await Promise.all([
       supabase.from('work_types').select('*').order('sort_order'),
       supabase.from('work_type_itps').select('*').order('sort_order'),
       supabase.from('flow_templates').select('id, name').order('created_at'),
@@ -60,9 +60,9 @@ export default function WorkTypeManager({ onToast }: Props) {
     setWorkTypes(wt || [])
     setItps(itp || [])
     setFlows(fl || [])
+    setSubProjects(sp || [])
     setFormats(fmt || [])
     setLevels(lvl || [])
-    setSubProjects(subProjects || [])
     setLoading(false)
     
   }
