@@ -57,11 +57,13 @@ export default function RFIModal({ rfi, open, onClose, currentUser, currentRole,
 
   // Role Groups (ดึงจาก DB)
   const [roleGroups, setRoleGroups] = useState<{ id: string; name: string; label: string; color: string }[]>([])
+  const [flowLoaded, setFlowLoaded] = useState(false)
 
   const fileRef = useRef<HTMLInputElement>(null)
 
 useEffect(() => {
-  if (!rfi?.flow_template_id) return
+  setFlowLoaded(false)
+  if (!rfi?.flow_template_id) { setFlowLoaded(true); return }
 
     setFlowNodes([])
   setFlowEdges([])
@@ -86,6 +88,7 @@ useEffect(() => {
     setFlowEdges(e || [])
     setRoleGroups(rg || [])
     setCurrentNode(nodes.find((x: FlowNode) => x.id === rfi.current_node_id) || null)
+    setFlowLoaded(true)
 
     // โหลดส่วนที่เหลือ (หลัง flow แสดงแล้ว)
     const nodeIds = nodes.map((x: FlowNode) => x.id)
@@ -332,9 +335,19 @@ const handleAdvance = async (condition = 'yes') => {
   )
 
 const renderActionPanel = () => {
-  if (!currentNode) return (
+  if (!flowLoaded) return (
     <div style={apStyle}>
       <div style={{ fontSize: 11.5, color: 'var(--text3)' }}>กำลังโหลด...</div>
+    </div>
+  )
+  if (!rfi.flow_template_id) return (
+    <div style={apStyle}>
+      <div style={{ fontSize: 11.5, color: 'var(--text3)' }}>ยังไม่ได้กำหนด Flow Template</div>
+    </div>
+  )
+  if (!currentNode) return (
+    <div style={apStyle}>
+      <div style={{ fontSize: 11.5, color: 'var(--text3)' }}>ไม่พบ Node ปัจจุบันใน Flow</div>
     </div>
   )
   const currentNodeLevels = flowLevels.filter(l => l.node_id === (currentNode?.id || rfi.current_node_id))
