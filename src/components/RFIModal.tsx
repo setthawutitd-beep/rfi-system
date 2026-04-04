@@ -342,7 +342,27 @@ const renderActionPanel = () => {
   )
   if (!rfi.flow_template_id) return (
     <div style={apStyle}>
-      <div style={{ fontSize: 11.5, color: 'var(--text3)' }}>ยังไม่ได้กำหนด Flow Template</div>
+      <div style={{ fontSize: 11.5, color: 'var(--text3)', marginBottom: 8 }}>ยังไม่ได้กำหนด Flow Template</div>
+      <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}
+        disabled={actionLoading}
+        onClick={async () => {
+          if (!rfi.work_type_id) { onToast('ผิดพลาด', 'RFI นี้ไม่มี Work Type', 'error'); return }
+          setActionLoading(true)
+          const { data: wt } = await supabase.from('work_types').select('flow_template_id').eq('id', rfi.work_type_id).single()
+          if (!wt?.flow_template_id) { onToast('ผิดพลาด', 'Work Type ยังไม่มี Flow Template', 'error'); setActionLoading(false); return }
+          const { data: firstNode } = await supabase.from('flow_nodes').select('id').eq('flow_id', wt.flow_template_id).eq('node_type', 'start').single()
+          let nodeId = firstNode?.id || null
+          if (nodeId) {
+            const { data: edge } = await supabase.from('flow_edges').select('target_id').eq('source_id', nodeId).eq('condition', 'yes').single()
+            if (edge?.target_id) nodeId = edge.target_id
+          }
+          await supabase.from('rfis').update({ flow_template_id: wt.flow_template_id, current_node_id: nodeId }).eq('id', rfi.id)
+          onToast('สำเร็จ', 'กำหนด Flow Template แล้ว', 'success')
+          await onAction(rfi.id, 'assign_flow', '')
+          setActionLoading(false)
+        }}>
+        {actionLoading ? '⟳ กำลังบันทึก...' : '⚡ กำหนด Flow จาก Work Type'}
+      </button>
     </div>
   )
   if (!currentNode) return (
