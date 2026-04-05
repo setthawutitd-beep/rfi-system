@@ -37,7 +37,11 @@ export async function fetchRfis() {
   return supabase
     .from('rfis')
     .select(`
-      *,
+      id, type, discipline, location, zone, description,
+      status, priority, team, inspect_date, resubmit_count,
+      requester_id, created_at, updated_at,
+      flow_template_id, current_node_id,
+      work_type_id, work_type_code,
       requester:profiles!rfis_requester_id_fkey(id, name, role, avatar, color),
       history:rfi_history(*, user:profiles!rfi_history_user_id_fkey(id, name, role, avatar, color)),
       comments:rfi_comments(*, user:profiles!rfi_comments_user_id_fkey(id, name, role, avatar, color)),

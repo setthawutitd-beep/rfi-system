@@ -74,108 +74,91 @@ export default function CreateForm({ currentUser, onSuccess, onToast }: Props) {
   }
 
   const handleSubmit = async () => {
-    if (!currentUser || !selectedWT) return
-    setLoading(true)
-    try {
-      const priority = calcPriority(form.inspectDate)
+  if (!currentUser || !selectedWT) return
+  setLoading(true)
+  try {
+    const priority = calcPriority(form.inspectDate)
 
-      // Generate RFI Number
-const { data: rfiNo, error: rpcErr } = await supabase.rpc('generate_rfi_number', {
-  p_work_type_id: selectedWT.id
-})
+    const { data: rfiNo, error: rpcErr } = await supabase.rpc('generate_rfi_number', {
+      p_work_type_id: selectedWT.id
+    })
+    if (rpcErr) throw rpcErr
 
-
-      if (rpcErr) throw rpcErr
-
-      // Insert RFI
-      const { data: rfi, error } = await supabase.from('rfis').insert({
-        id: rfiNo as string,
-        type: selectedWT.name,
-        discipline: 'CIV',
-        location: form.location,
-        zone: form.zone,
-        description: form.description,
-        priority,
-        team: form.team,
-        inspect_date: form.inspectDate || null,
-        status: 'open',
-        requester_id: currentUser.id,
-        work_type_id: selectedWT.id,
-        work_type_code: selectedWT.code,
-      }).select().single()
-
-      if (error) throw error
-
-      // ผูก Flow อัตโนมัติจาก Work Type
-      if (selectedWT.flow_template_id) {
-        const { data: firstNode } = await supabase
-          .from('flow_nodes').select('id')
-          .eq('flow_id', selectedWT.flow_template_id)
-          .eq('node_type', 'start').single()
-
-        await supabase.from('rfis').update({
-          flow_template_id: selectedWT.flow_template_id,
-          current_node_id: firstNode?.id || null,
-        }).eq('id', rfi.id)
-
-        // เลื่อนจาก Start → QC กำหนดเอกสาร อัตโนมัติ
-if (firstNode?.id) {
-  const { data: nextEdge } = await supabase
-    .from('flow_edges')
-    .select('target_id')
-    .eq('source_id', firstNode.id)
-    .eq('condition', 'yes')
-    .single()
-
-  if (nextEdge?.target_id) {
-    await supabase.from('rfis')
-      .update({ current_node_id: nextEdge.target_id })
-      .eq('id', rfi.id)
-  }
-}
+    // หา nodeId ก่อน insert
+    let nodeId: string | null = null
+    if (selectedWT.flow_template_id) {
+      const { data: firstNode } = await supabase
+        .from('flow_nodes').select('id')
+        .eq('flow_id', selectedWT.flow_template_id)
+        .eq('node_type', 'start').single()
+      if (firstNode?.id) {
+        const { data: nextEdge } = await supabase
+          .from('flow_edges').select('target_id')
+          .eq('source_id', firstNode.id).eq('condition', 'yes').single()
+        nodeId = nextEdge?.target_id || firstNode.id
       }
-
-      
-const selectedItp = allItps.find(i => i.id === selectedITPId)
-if (selectedItp) {
-  await supabase.from('rfi_itp_items').insert([{
-    rfi_id: rfi.id,
-    work_type_itp_id: selectedItp.id,
-    itp_no: selectedItp.itp_no,
-    qc_code: selectedItp.qc_code,
-    item_name: selectedItp.item_name,
-    description: selectedItp.description,
-    status: 'pending',
-    sort_order: 0,
-  }])
-}
-
-      await addHistory({
-        rfi_id: rfi.id, action: 'submit',
-        user_id: currentUser.id, note: 'ส่งคำขอ RFI',
-      })
-
-      const { data: profiles } = await fetchProfiles()
-      const qcUsers = (profiles || []).filter((p: { role: string }) => p.role === 'qc')
-      for (const qc of qcUsers) {
-        await addNotification({
-          user_id: qc.id, rfi_id: rfi.id,
-          message: `${rfi.id} — RFI ใหม่รอ QC Review`, icon: '📋',
-        })
-      }
-
-      onToast('สร้าง RFI สำเร็จ', `${rfi.id}`, 'success')
-      onSuccess(rfi.id)
-
-      // Reset
-      setSelectedWT(null); setSelectedITPId('')
-      setForm({ location: '', zone: '', description: '', team: [], inspectDate: '', inspectTime: '08:00' })
-      setStep(1)
-    } catch (e) {
-      onToast('เกิดข้อผิดพลาด', (e as Error).message, 'error')
     }
-    setLoading(false)
+
+    // Insert RFI พร้อม flow fields ในครั้งเดียว
+    const { data: rfi, error } = await supabase.from('rfis').insert({
+      id: rfiNo as string,
+      type: selectedWT.name,
+      discipline: 'CIV',
+      location: form.location,
+      zone: form.zone,
+      description: form.description,
+      priority,
+      team: form.team,
+      inspect_date: form.inspectDate || null,
+      status: 'open',
+      requester_id: currentUser.id,
+      work_type_id: selectedWT.id,
+      work_type_code: selectedWT.code,
+      flow_template_id: selectedWT.flow_template_id || null,
+      current_node_id: nodeId,
+    }).select().single()
+    if (error) throw error
+
+    // Insert ITP
+    const selectedItp = allItps.find(i => i.id === selectedITPId)
+    if (selectedItp) {
+      await supabase.from('rfi_itp_items').insert([{
+        rfi_id: rfi.id,
+        work_type_itp_id: selectedItp.id,
+        itp_no: selectedItp.itp_no,
+        qc_code: selectedItp.qc_code,
+        item_name: selectedItp.item_name,
+        description: selectedItp.description,
+        status: 'pending',
+        sort_order: 0,
+      }])
+    }
+
+    await addHistory({
+      rfi_id: rfi.id, action: 'submit',
+      user_id: currentUser.id, note: 'ส่งคำขอ RFI',
+    })
+
+    const { data: profiles } = await fetchProfiles()
+    const qcUsers = (profiles || []).filter((p: { role: string }) => p.role === 'qc')
+    for (const qc of qcUsers) {
+      await addNotification({
+        user_id: qc.id, rfi_id: rfi.id,
+        message: `${rfi.id} — RFI ใหม่รอ QC Review`, icon: '📋',
+      })
+    }
+
+    onToast('สร้าง RFI สำเร็จ', `${rfi.id}`, 'success')
+    onSuccess(rfi.id)
+
+    setSelectedWT(null); setSelectedITPId('')
+    setForm({ location: '', zone: '', description: '', team: [], inspectDate: '', inspectTime: '08:00' })
+    setStep(1)
+  } catch (e) {
+    onToast('เกิดข้อผิดพลาด', (e as Error).message, 'error')
   }
+  setLoading(false)
+}
 
   const steps = ['ประเภทงาน', 'QC Codes', 'รายละเอียด', 'ยืนยัน']
   const rfiWork = workTypes.filter(w => w.work_category === 'RFI Work')
