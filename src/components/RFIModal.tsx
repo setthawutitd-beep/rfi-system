@@ -138,21 +138,18 @@ export default function RFIModal({ rfi, open, onClose, currentUser, currentRole,
     }
 
     loadFlow(rfi.flow_template_id, rfi.current_node_id, rfi.id)
-  }, [rfi?.id, rfi?.flow_template_id, rfi?.current_node_id])
+  }, [rfi?.id, rfi?.flow_template_id])
 
-  // sync activeNodeId เมื่อ rfi.current_node_id เปลี่ยน (จาก handleAdvance ข้างนอก)
-  useEffect(() => {
-    if (rfi?.current_node_id && rfi.current_node_id !== activeNodeId) {
-      setActiveNodeId(rfi.current_node_id)
-      const found = flowNodes.find(x => x.id === rfi.current_node_id) || null
-      if (found) setCurrentNode(found)
-    }
-  }, [rfi?.current_node_id])
+
 
   if (!rfi) return null
 
   // ใช้ activeNodeId แทน rfi.current_node_id เสมอ
   const effectiveNodeId = activeNodeId || rfi.current_node_id
+  const attachNodeId = flowNodes.find(n =>
+  flowLevels.some(l => l.node_id === n.id && l.action_type === 'attach')
+  )?.id || effectiveNodeId
+
   const currentNodeLevels = flowLevels.filter(l => l.node_id === effectiveNodeId)
   const userRoleGroupIds = roleGroups.filter(rg => rg.name === currentRole).map(rg => rg.id)
 
@@ -161,44 +158,56 @@ export default function RFIModal({ rfi, open, onClose, currentUser, currentRole,
     return edge ? flowNodes.find(n => n.id === edge.target_id) : null
   }
 
-  const handleAdvance = async (condition = 'yes') => {
-    const next = getNextNode(condition)
-    if (!next) return
-    setActionLoading(true)
 
-    await supabase.from('rfis').update({ current_node_id: next.id }).eq('id', rfi.id)
-    await supabase.from('rfi_activity_log').insert({
-      rfi_id: rfi.id, node_id: effectiveNodeId,
-      action_type: 'advance', actor_id: currentUser?.id,
-      note: `เลื่อนไป: ${next.label}`,
-    })
+const handleAdvance = async (condition = 'yes') => {
+  console.log('=== handleAdvance called ===', condition)
+  console.log('effectiveNodeId:', effectiveNodeId)
+  console.log('flowEdges:', flowEdges)
+  const next = getNextNode(condition)
+  console.log('next node:', next)
+  if (!next) return
+  setActionLoading(true)
 
-    // update local state ทันที ไม่ต้องรอ re-fetch
-    setCurrentNode(next)
-    setActiveNodeId(next.id)
+    const { data, error } = await supabase.from('rfis')
+    .update({ current_node_id: next.id })
+    .eq('id', rfi.id)
+    .select()
+  console.log('update result:', data, error)
+  
+  setCurrentNode(next)
+  setActiveNodeId(next.id)
+  console.log('set activeNodeId:', next.id, next.label)
 
-    // reload docs/approvals สำหรับ node ใหม่
-    const [{ data: newDocs }, { data: newApprovals }] = await Promise.all([
-      supabase.from('rfi_doc_requests').select('*').eq('rfi_id', rfi.id)
-        .not('status', 'eq', 'rejected').order('sort_order').order('rev_no'),
-      supabase.from('rfi_approvals').select('*, user:user_id(name, color, avatar)').eq('rfi_id', rfi.id),
-    ])
-    setDocRequests(newDocs || [])
-    setRfiApprovals(newApprovals || [])
-    setRemark('')
-    setDocReviews({})
+  await supabase.from('rfis').update({ current_node_id: next.id }).eq('id', rfi.id)
+  await supabase.from('rfi_activity_log').insert({
+    rfi_id: rfi.id, node_id: effectiveNodeId,
+    action_type: 'advance', actor_id: currentUser?.id,
+    note: `เลื่อนไป: ${next.label}`,
+  })
 
-    onToast('สำเร็จ', `เลื่อนไป "${next.label}"`, 'success')
-    setActionLoading(false)
-    // บอก App.tsx ให้ refresh rfi object (อัปเดต current_node_id ใน rfis list)
-    await onAction(rfi.id, 'advance', '')
-  }
+  setCurrentNode(next)
+  setActiveNodeId(next.id)
+
+  const [{ data: newDocs }, { data: newApprovals }] = await Promise.all([
+    supabase.from('rfi_doc_requests').select('*').eq('rfi_id', rfi.id)
+      .not('status', 'eq', 'rejected').order('sort_order').order('rev_no'),
+    supabase.from('rfi_approvals').select('*, user:user_id(name, color, avatar)').eq('rfi_id', rfi.id),
+  ])
+  setDocRequests(newDocs || [])
+  setRfiApprovals(newApprovals || [])
+  setRemark('')
+  setDocReviews({})
+
+  onToast('สำเร็จ', `เลื่อนไป "${next.label}"`, 'success')
+  setActionLoading(false)
+  
+}
 
   const handleAddDocRequest = async () => {
     if (!newDoc.label) return
     setSaving(true)
     await supabase.from('rfi_doc_requests').insert({
-      rfi_id: rfi.id, node_id: effectiveNodeId,
+      rfi_id: rfi.id, node_id: attachNodeId,
       label: newDoc.label, description: newDoc.description || null,
       required: newDoc.required, responsible_ids: newDoc.responsible_ids,
       sort_order: docRequests.length + 1, status: 'pending',
@@ -453,7 +462,7 @@ export default function RFIModal({ rfi, open, onClose, currentUser, currentRole,
                           for (let i = 0; i < tmplLevel.attachments.length; i++) {
                             const att = tmplLevel.attachments[i]
                             await supabase.from('rfi_doc_requests').insert({
-                              rfi_id: rfi.id, node_id: currentNode.id,
+                              rfi_id: rfi.id, node_id: attachNodeId,
                               label: att.label, description: att.description || null,
                               required: att.required, responsible_type: 'role_group',
                               responsible_ids: att.responsible_role_id ? [att.responsible_role_id] : [],
@@ -577,6 +586,9 @@ export default function RFIModal({ rfi, open, onClose, currentUser, currentRole,
               })}
 
               <div style={{ marginTop: 8 }}>
+              <div style={{fontSize:10, color:'var(--yellow)'}}>
+    required: {requiredDocs.length} | submitted: {submittedCount} | allDone: {String(allDone)}
+  </div>
                 <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 6, textAlign: 'center' }}>
                   เอกสารบังคับ {submittedCount}/{requiredDocs.length} อัน
                 </div>

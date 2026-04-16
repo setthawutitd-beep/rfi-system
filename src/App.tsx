@@ -72,25 +72,18 @@ const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session)
   }
 
 
-
 const handleAction = async (rfiId: string, action: string, remark: string) => {
   const result = await doAction(rfiId, action, remark)
-  // Fetch RFI ใหม่จาก DB แล้วอัปเดต selectedRfi
-const { data: fresh } = await supabase
-  .from('rfis')
-  .select(`
-    *,
-    flow_template_id,
-    current_node_id,
-    work_type_id,
-    work_type_code,
-    requester:requester_id(id, name, email, role, color, avatar),
-    comments:rfi_comments(id, text, created_at, user:user_id(name, color))
-  `)
-  .eq('id', rfiId)
-  .single()
-
-  if (fresh) setSelectedRfi(fresh as Rfi)
+  
+  // ไม่ fetch ถ้าเป็น advance — Modal จัดการ state เองแล้ว
+  if (action !== 'advance') {
+    const { data: fresh } = await supabase
+      .from('rfis')
+      .select(`...`)
+      .eq('id', rfiId)
+      .single()
+    if (fresh) setSelectedRfi(prev => prev ? { ...prev, ...fresh } as unknown as Rfi : fresh as unknown as Rfi)
+  }
   return result
 }
 

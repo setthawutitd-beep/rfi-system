@@ -33,7 +33,7 @@ export function useRFI() {
         fetchSettings(),
       ])
 
-      if (rfiRes.data) setRfis(rfiRes.data as Rfi[])
+      if (rfiRes.data) setRfis(rfiRes.data as unknown as Rfi[])
 if (profileRes.data) {
   setProfiles(profileRes.data as Profile[])
   const me = profileRes.data.find(p => p.id === session.user.id)
